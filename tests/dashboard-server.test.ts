@@ -80,3 +80,32 @@ test('oversized body is rejected', async () => {
 test('unknown route returns 404', async () => {
   assert.equal((await fetch(base + '/missing')).status, 404);
 });
+
+test('read-only demo: pause and crash are refused even with the right header', async () => {
+  const roCalls: string[] = [];
+  const ro = createDashboardServer({
+    ...deps,
+    readOnly: true,
+    setPaused: async () => {
+      roCalls.push('pause');
+      return 'SIG';
+    },
+    setDemoCrash: async () => {
+      roCalls.push('crash');
+    },
+  });
+  await new Promise<void>((r) => ro.listen(0, '127.0.0.1', r));
+  const roBase = `http://127.0.0.1:${(ro.address() as AddressInfo).port}`;
+  try {
+    const headers = { 'content-type': 'application/json', 'x-regimeguard': '1' };
+    const p = await fetch(roBase + '/api/pause', { method: 'POST', headers, body: JSON.stringify({ paused: true }) });
+    const c = await fetch(roBase + '/api/demo-crash', { method: 'POST', headers, body: JSON.stringify({ on: true }) });
+    assert.equal(p.status, 403);
+    assert.equal(c.status, 403);
+    assert.deepEqual(roCalls, []);
+    const s = await fetch(roBase + '/api/state'); // reading still works
+    assert.equal(s.status, 200);
+  } finally {
+    ro.close();
+  }
+});

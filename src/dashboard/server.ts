@@ -8,6 +8,7 @@ export interface Deps {
   getState: () => Promise<DashboardState>;
   setPaused: (paused: boolean) => Promise<string>; // returns the transaction signature
   setDemoCrash: (on: boolean) => Promise<void>;
+  readOnly?: boolean; // public demo: every POST is refused, only GET works
 }
 
 const send = (res: http.ServerResponse, status: number, body: string, type = 'application/json') => {
@@ -46,6 +47,8 @@ export function createDashboardServer(deps: Deps): http.Server {
       }
 
       if (req.method === 'POST' && (url === '/api/pause' || url === '/api/demo-crash')) {
+        // Public demo: nobody can pause the agent or start the crash simulation
+        if (deps.readOnly) return send(res, 403, JSON.stringify({ error: 'read-only demo' }));
         // Protects against CSRF: another website cannot add this header
         if (req.headers['x-regimeguard'] !== '1') {
           return send(res, 403, JSON.stringify({ error: 'header required' }));

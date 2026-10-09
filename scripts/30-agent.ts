@@ -21,7 +21,8 @@ const conn = connection();
 const programId = guardProgramId();
 const mint = new PublicKey(process.env.MINT_ADDRESS!);
 const receiverAta = new PublicKey(process.env.RECEIVER_ATA!);
-const ownerKp = loadKeypair('.keys/owner.json');
+// The agent only needs the owner's PUBLIC key. On a server set OWNER_PUBKEY so the owner's secret key never leaves your machine.
+const ownerPub = process.env.OWNER_PUBKEY ? new PublicKey(process.env.OWNER_PUBKEY) : loadKeypair('.keys/owner.json').publicKey;
 const agentKp = loadKeypair('.keys/agent.json');
 const oracleKp = loadKeypair('.keys/oracle.json');
 
@@ -30,7 +31,7 @@ if (!fs.existsSync('.agent-config.json')) {
   process.exit(1);
 }
 const nonce = BigInt(JSON.parse(fs.readFileSync('.agent-config.json', 'utf8')).nonce);
-const accounts = await derivePullAccounts({ programId, owner: ownerKp.publicKey, mint, receiverAta, nonce });
+const accounts = await derivePullAccounts({ programId, owner: ownerPub, mint, receiverAta, nonce });
 const policyAddr = policyPda(programId, agentKp.publicKey);
 const oracleAddr = oraclePda(programId, oracleKp.publicKey);
 
