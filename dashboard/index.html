@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RegimeGuard</title>
+<style>
+  :root {
+    --bg:#f6f7f9; --card:#ffffff; --text:#14181f; --muted:#667085; --line:#e4e7ec;
+    --calm:#12805c; --trend:#2563eb; --volatile:#b7791f; --crisis:#c0392b; --ok:#12805c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0e1116; --card:#171b22; --text:#e8eaee; --muted:#98a2b3; --line:#2a303a;
+            --calm:#34d399; --trend:#60a5fa; --volatile:#fbbf24; --crisis:#f87171; --ok:#34d399; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:980px; margin:0 auto; padding:20px 16px 48px; }
+  header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  h1 { font-size:22px; margin:0; }
+  .pill { font-size:12px; border:1px solid var(--line); border-radius:999px; padding:2px 10px; color:var(--muted); }
+  .sub { color:var(--muted); margin:0 0 18px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:760px){ .grid{ grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .card h2 { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 12px; font-weight:600; }
+  .badge { display:inline-block; font-size:34px; font-weight:700; letter-spacing:.02em; }
+  .CALM{color:var(--calm)} .TREND{color:var(--trend)} .VOLATILE{color:var(--volatile)} .CRISIS{color:var(--crisis)}
+  .big { font-size:30px; font-weight:650; }
+  .muted { color:var(--muted); }
+  .row { display:flex; justify-content:space-between; gap:12px; margin-top:6px; }
+  .bar { height:14px; background:var(--line); border-radius:999px; overflow:hidden; margin:10px 0 6px; }
+  .bar > div { height:100%; width:0; background:var(--calm); transition:width .5s, background .5s; }
+  .bar.warn > div { background:var(--volatile); } .bar.full > div { background:var(--crisis); }
+  .tag { font-size:12px; padding:2px 8px; border-radius:6px; border:1px solid var(--line); }
+  .tag.bad { color:var(--crisis); border-color:var(--crisis); } .tag.good { color:var(--ok); border-color:var(--ok); }
+  .controls { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--text);
+           padding:9px 14px; border-radius:10px; cursor:pointer; }
+  button:hover { border-color:var(--muted); } button:disabled { opacity:.5; cursor:wait; }
+  button.on { border-color:var(--crisis); color:var(--crisis); }
+  .full-width { grid-column:1 / -1; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+  .k-BUY{color:var(--ok)} .k-REJECTED{color:var(--crisis)} .k-WAIT{color:var(--volatile)} .k-ERROR{color:var(--muted)}
+  a { color:var(--trend); } .addr { font:12px ui-monospace,Consolas,monospace; word-break:break-all; }
+  #err { color:var(--crisis); margin:0 0 12px; min-height:1.4em; }
+  .legend span { margin-right:14px; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>RegimeGuard</h1><span class="pill">Solana devnet</span><span class="pill" id="live">connecting…</span>
+  </header>
+  <p class="sub">An AI agent's daily spending limit shrinks when the market turns dangerous. The limit is enforced on-chain.</p>
+  <p id="err"></p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Market regime (what the guard enforces)</h2>
+      <div class="badge" id="regime">–</div>
+      <div class="row"><span class="muted">Limit multiplier</span><b id="mult">–</b></div>
+      <div class="row"><span class="muted">Oracle says</span><b id="oracleRegime">–</b></div>
+      <div class="row"><span class="muted">Oracle updated</span><span id="age">–</span></div>
+      <div class="row"><span class="muted">Agent state</span><span id="paused">–</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Today's spending budget</h2>
+      <div class="big"><span id="spent">–</span> <span class="muted" style="font-size:16px">of</span> <span id="limit">–</span> <span class="muted" style="font-size:16px">tokens</span></div>
+      <div class="bar" id="bar"><div id="barfill"></div></div>
+      <div class="row"><span class="muted">Remaining today</span><b id="remaining">–</b></div>
+      <div class="row"><span class="muted">Base daily limit (CALM)</span><span id="base">–</span></div>
+    </div>
+
+    <div class="card full-width">
+      <h2>Controls</h2>
+      <div class="controls">
+        <button id="pauseBtn">Pause agent (owner)</button>
+        <button id="crashBtn">Simulate crash</button>
+      </div>
+      <p class="muted" style="margin:10px 0 0;font-size:13px">
+        <b>Simulate crash</b> only appends a synthetic price drop inside the keeper for demonstration; the keeper picks it up within about a minute. Nothing about the real market changes.
+      </p>
+    </div>
+
+    <div class="card full-width">
+      <h2>Agent activity</h2>
+      <table>
+        <thead><tr><th>Time</th><th>Event</th><th>Tokens</th><th>Regime</th><th>Detail</th></tr></thead>
+        <tbody id="events"><tr><td colspan="5" class="muted">No activity yet. Start the agent: <code>npm run agent</code></td></tr></tbody>
+      </table>
+      <p class="legend muted" style="font-size:13px;margin:12px 0 0">
+        <span class="k-BUY">BUY</span> allowed by the guard &nbsp;
+        <span class="k-WAIT">WAIT</span> the agent paused itself &nbsp;
+        <span class="k-REJECTED">REJECTED</span> the chain stopped it
+      </p>
+    </div>
+
+    <div class="card full-width">
+      <h2>On-chain addresses</h2>
+      <div class="row"><span class="muted">Guard program</span><a class="addr" id="aProgram" target="_blank" rel="noopener"></a></div>
+      <div class="row"><span class="muted">Oracle account</span><a class="addr" id="aOracle" target="_blank" rel="noopener"></a></div>
+      <div class="row"><span class="muted">Policy account</span><a class="addr" id="aPolicy" target="_blank" rel="noopener"></a></div>
+      <div class="row"><span class="muted">Agent wallet</span><a class="addr" id="aAgent" target="_blank" rel="noopener"></a></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const explorer = (kind, v) => `https://explorer.solana.com/${kind}/${v}?cluster=devnet`;
+let current = null;
+
+function setLink(id, v) { const a = $(id); a.textContent = v; a.href = explorer('address', v); }
+
+function fmtAge(s) {
+  if (s === null) return 'never';
+  if (s < 0) return 'clock skew';
+  if (s < 90) return s + ' s ago';
+  return Math.round(s / 60) + ' min ago';
+}
+
+function render(s) {
+  current = s;
+  const r = $('regime'); r.textContent = s.regime; r.className = 'badge ' + s.regime;
+  $('mult').textContent = s.multiplierPct + '% of base';
+  $('oracleRegime').textContent = s.oracleRegime;
+  $('age').innerHTML = fmtAge(s.oracleAgeSecs) + ' ' +
+    (s.oracleStale ? '<span class="tag bad">stale: guard treats as CRISIS</span>' : '<span class="tag good">fresh</span>');
+  $('paused').innerHTML = s.paused ? '<span class="tag bad">paused by owner</span>' : '<span class="tag good">active</span>';
+
+  $('spent').textContent = s.spent; $('limit').textContent = s.limitToday;
+  $('remaining').textContent = s.remaining; $('base').textContent = s.baseLimit;
+  $('barfill').style.width = s.usedPct + '%';
+  $('bar').className = 'bar' + (s.usedPct >= 100 ? ' full' : s.usedPct >= 70 ? ' warn' : '');
+
+  $('pauseBtn').textContent = s.paused ? 'Resume agent (owner)' : 'Pause agent (owner)';
+  const c = $('crashBtn'); c.textContent = s.demoCrash ? 'Stop crash simulation' : 'Simulate crash';
+  c.className = s.demoCrash ? 'on' : '';
+
+  setLink('aProgram', s.addresses.program); setLink('aOracle', s.addresses.oracle);
+  setLink('aPolicy', s.addresses.policy); setLink('aAgent', s.addresses.agent);
+
+  const tb = $('events');
+  tb.textContent = '';
+  if (!s.events.length) {
+    const tr = document.createElement('tr'), td = document.createElement('td');
+    td.colSpan = 5; td.className = 'muted'; td.textContent = 'No activity yet. Start the agent: npm run agent';
+    tr.appendChild(td); tb.appendChild(tr);
+  }
+  for (const e of s.events) {
+    const tr = document.createElement('tr');
+    const cells = [
+      new Date(e.t).toLocaleTimeString(),
+      e.kind, e.amount ?? '', e.regime ?? '', e.note,
+    ];
+    cells.forEach((v, i) => {
+      const td = document.createElement('td');
+      if (i === 1) { td.className = 'k-' + e.kind; td.textContent = v; }
+      else if (i === 4 && e.sig) {
+        td.textContent = v + ' ';
+        const a = document.createElement('a'); a.textContent = 'tx'; a.target = '_blank'; a.rel = 'noopener';
+        a.href = explorer('tx', e.sig); td.appendChild(a);
+      } else td.textContent = v;
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  }
+}
+
+async function poll() {
+  try {
+    const r = await fetch('/api/state');
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    render(j); $('err').textContent = ''; $('live').textContent = 'live';
+  } catch (e) {
+    $('err').textContent = 'Could not read state: ' + e.message; $('live').textContent = 'offline';
+  }
+}
+
+async function post(path, body, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-regimeguard': '1' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    await poll();
+  } catch (e) { $('err').textContent = 'Action failed: ' + e.message; }
+  btn.disabled = false;
+}
+
+$('pauseBtn').onclick = (ev) => current && post('/api/pause', { paused: !current.paused }, ev.target);
+$('crashBtn').onclick = (ev) => current && post('/api/demo-crash', { on: !current.demoCrash }, ev.target);
+
+poll(); setInterval(poll, 4000);
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "name": "regimeguard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsx --env-file=.env scripts/00-check.ts",
+    "init": "tsx --env-file=.env scripts/01-init-authority.ts",
+    "allowance": "tsx --env-file=.env scripts/02-create-allowance.ts",
+    "spend": "tsx --env-file=.env scripts/03-agent-spend.ts",
+    "overspend": "tsx --env-file=.env scripts/04-overspend-test.ts",
+    "state": "tsx --env-file=.env scripts/05-show-state.ts",
+    "maketoken": "tsx --env-file=.env scripts/07-make-token.ts",
+    "test": "node --import tsx --env-file=.env --test tests/phase1.test.ts",
+    "test:unit": "node --import tsx --test tests/regime.test.ts",
+    "guardproof": "tsx --env-file=.env scripts/experiments/guard-proof.ts",
+    "guardsetup": "tsx --env-file=.env scripts/10-guard-setup.ts",
+    "oracle": "tsx --env-file=.env scripts/11-oracle-set.ts",
+    "testguard": "node --import tsx --env-file=.env --test --test-concurrency=1 tests/guard.test.ts",
+    "pricecheck": "tsx scripts/20-price-check.ts",
+    "keeper": "tsx --env-file=.env scripts/21-keeper.ts",
+    "testkeeper": "node --import tsx --test tests/keeper.test.ts",
+    "agentsetup": "tsx --env-file=.env scripts/12-agent-setup.ts",
+    "agent": "tsx --env-file=.env scripts/30-agent.ts",
+    "testagent": "node --import tsx --test tests/agent.test.ts",
+    "dashboard": "tsx --env-file=.env scripts/40-dashboard.ts",
+    "testdash": "node --import tsx --test tests/dashboard.test.ts tests/dashboard-server.test.ts"
+  },
+  "dependencies": {
+    "@solana-program/token": "^0.15.0",
+    "@solana/kit": "^7.1.1",
+    "@solana/kit-plugin-rpc": "^0.17.0",
+    "@solana/kit-plugin-signer": "^0.17.0",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/subscriptions": "^0.5.0",
+    "@solana/web3.js": "^1.99.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

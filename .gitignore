@@ -1,0 +1,11 @@
+.keys
+.env
+.agent-config.json
+.agent-log.jsonl
+.demo-crash
+node_modules
+dist
+target
+*.log
+*.zip
+temp.txt
