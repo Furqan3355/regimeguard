@@ -1,0 +1,14 @@
+.git
+node_modules
+web/node_modules
+web/.next
+.env
+.env.*
+.keys
+.agent-config.json
+.agent-log.jsonl
+.demo-crash
+target
+dist
+*.zip
+*.log

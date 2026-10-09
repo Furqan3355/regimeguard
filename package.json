@@ -24,6 +24,7 @@
     "agent": "tsx --env-file=.env scripts/30-agent.ts",
     "testagent": "node --import tsx --test tests/agent.test.ts",
     "dashboard": "tsx --env-file=.env scripts/40-dashboard.ts",
+    "pubkeys": "tsx scripts/50-show-pubkeys.ts",
     "testdash": "node --import tsx --test tests/dashboard.test.ts tests/dashboard-server.test.ts"
   },
   "dependencies": {
