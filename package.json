@@ -26,6 +26,7 @@
     "dashboard": "tsx --env-file=.env scripts/40-dashboard.ts",
     "pubkeys": "tsx scripts/50-show-pubkeys.ts",
     "register": "tsx --env-file=.env scripts/13-register-agent.ts",
+    "newagent": "tsx scripts/14-new-agent-key.ts",
     "example": "tsx examples/my-agent.ts",
     "testsdk": "node --import tsx --test tests/sdk.test.ts",
     "testdash": "node --import tsx --test tests/dashboard.test.ts tests/dashboard-server.test.ts"
