@@ -9,16 +9,14 @@ Two people are involved (they can be the same human):
 
 ## 1. Before you start
 
-**The agent** needs a key of its own, different from the owner's wallet. Create one and keep the secret file safe:
+**The agent** is a program with its own key. The key is just its identity: a secret file plus a public address. Create a new one:
 
 ```bash
-solana-keygen new --outfile agent-key.json
-solana address -k agent-key.json        # the public address, safe to share
+npm run newagent                      # writes .keys/agent2.json (secret) and prints the agent address (public)
+npm run newagent -- .keys/bob.json    # or choose the file name
 ```
 
-Then it needs:
-
-- a little devnet SOL at that address, to pay network fees (https://faucet.solana.com)
+It never overwrites an existing key. It also tries to get a little devnet SOL for network fees. If the public faucet is busy, paste the printed address at https://faucet.solana.com (choose devnet) to get it by hand.
 
 **The owner** needs:
 
@@ -62,7 +60,7 @@ import { Keypair } from '@solana/web3.js';
 import { GuardRejectionError, RegimeGuardAgent } from './src/sdk/index.ts';
 
 const config = JSON.parse(fs.readFileSync('agent-config.XXXXXXXX.json', 'utf8'));
-const key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync('agent-key.json', 'utf8'))));
+const key = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync('.keys/agent2.json', 'utf8'))));
 const agent = await RegimeGuardAgent.fromConfig(config, key);
 
 const s = await agent.state();       // regime, paused, limit, spent, remaining (in the token's smallest unit)
@@ -90,7 +88,7 @@ What the SDK gives you:
 A complete small agent is in `examples/my-agent.ts`:
 
 ```bash
-npm run example -- agent-config.XXXXXXXX.json agent-key.json
+npm run example -- agent-config.XXXXXXXX.json .keys/agent2.json
 ```
 
 Checking `state()` first is polite but not required for safety: the guard enforces the limit on-chain whatever the agent does. An agent that ignores its limit simply gets rejected.
