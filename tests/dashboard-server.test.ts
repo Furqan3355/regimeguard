@@ -109,3 +109,44 @@ test('read-only demo: pause and crash are refused even with the right header', a
     ro.close();
   }
 });
+
+test('GET /api/agents validates the owner and returns that owner\'s agents', async () => {
+  const asked: string[] = [];
+  const s = createDashboardServer({ ...deps, listAgents: async (o) => { asked.push(o); return { owner: o, agents: [] }; } });
+  await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
+  const b = `http://127.0.0.1:${(s.address() as AddressInfo).port}`;
+  try {
+    assert.equal((await fetch(b + '/api/agents')).status, 400);
+    assert.equal((await fetch(b + '/api/agents?owner=not-an-address')).status, 400);
+    const ok = await fetch(b + '/api/agents?owner=11111111111111111111111111111111');
+    assert.equal(ok.status, 200);
+    assert.deepEqual(asked, ['11111111111111111111111111111111']);
+    // the page used by the public demo is read-only, but listing is a GET so it still works there
+    const ro = createDashboardServer({ ...deps, readOnly: true, listAgents: async (o) => ({ owner: o }) });
+    await new Promise<void>((r) => ro.listen(0, '127.0.0.1', r));
+    try {
+      const r2 = await fetch(`http://127.0.0.1:${(ro.address() as AddressInfo).port}/api/agents?owner=11111111111111111111111111111111`);
+      assert.equal(r2.status, 200);
+    } finally {
+      ro.close();
+    }
+  } finally {
+    s.close();
+  }
+});
+
+test('GET /api/agents is 404 when the server has no listAgents', async () => {
+  assert.equal((await fetch(base + '/api/agents?owner=11111111111111111111111111111111')).status, 404);
+});
+
+test('GET /api/blockhash returns a blockhash when configured, 404 otherwise', async () => {
+  assert.equal((await fetch(base + '/api/blockhash')).status, 404);
+  const s = createDashboardServer({ ...deps, getBlockhash: async () => ({ blockhash: 'HASH', lastValidBlockHeight: 7 }) });
+  await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
+  try {
+    const r = await fetch(`http://127.0.0.1:${(s.address() as AddressInfo).port}/api/blockhash`);
+    assert.deepEqual(await r.json(), { blockhash: 'HASH', lastValidBlockHeight: 7 });
+  } finally {
+    s.close();
+  }
+});

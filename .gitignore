@@ -9,3 +9,6 @@ target
 *.log
 *.zip
 temp.txt
+agent-config.*.json
+/pnpm-lock.yaml
+/pnpm-workspace.yaml

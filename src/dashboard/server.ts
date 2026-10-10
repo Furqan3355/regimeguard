@@ -9,7 +9,11 @@ export interface Deps {
   setPaused: (paused: boolean) => Promise<string>; // returns the transaction signature
   setDemoCrash: (on: boolean) => Promise<void>;
   readOnly?: boolean; // public demo: every POST is refused, only GET works
+  getBlockhash?: () => Promise<{ blockhash: string; lastValidBlockHeight: number }>; // for transactions the owner signs in the browser
+  listAgents?: (owner: string) => Promise<unknown>; // all agents (and their activity) of one owner wallet
 }
+
+const BASE58_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 const send = (res: http.ServerResponse, status: number, body: string, type = 'application/json') => {
   res.writeHead(status, { 'content-type': `${type}; charset=utf-8`, 'cache-control': 'no-store' });
@@ -39,11 +43,24 @@ export function createDashboardServer(deps: Deps): http.Server {
       }
 
       const url = (req.url ?? '/').split('?')[0];
+      const query = new URLSearchParams((req.url ?? '').split('?')[1] ?? '');
 
       if (req.method === 'GET' && url === '/') return send(res, 200, deps.html(), 'text/html');
 
       if (req.method === 'GET' && url === '/api/state') {
         return send(res, 200, JSON.stringify(await deps.getState()));
+      }
+
+      if (req.method === 'GET' && url === '/api/blockhash') {
+        if (!deps.getBlockhash) return send(res, 404, JSON.stringify({ error: 'not found' }));
+        return send(res, 200, JSON.stringify(await deps.getBlockhash()));
+      }
+
+      if (req.method === 'GET' && url === '/api/agents') {
+        if (!deps.listAgents) return send(res, 404, JSON.stringify({ error: 'not found' }));
+        const owner = query.get('owner') ?? '';
+        if (!BASE58_ADDRESS.test(owner)) return send(res, 400, JSON.stringify({ error: 'owner must be a wallet address' }));
+        return send(res, 200, JSON.stringify(await deps.listAgents(owner)));
       }
 
       if (req.method === 'POST' && (url === '/api/pause' || url === '/api/demo-crash')) {

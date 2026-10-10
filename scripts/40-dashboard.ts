@@ -2,8 +2,9 @@
 // Public demo: set PUBLIC_DEMO=1. The owner key is not loaded, pause and crash simulation are refused,
 // and the state tells the web page to hide the operator controls.
 import fs from 'node:fs';
-import { Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { PublicKey, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 import { createDashboardServer } from '../src/dashboard/server.ts';
+import { listOwnerAgents, type ChainReader, type OwnerView } from '../src/dashboard/agents.ts';
 import { buildState } from '../src/dashboard/state.ts';
 import { readEvents } from '../src/agent/log.ts';
 import { decodeOracle, decodePolicy, ixSetPaused, oraclePda, policyPda } from '../src/chain/guard.ts';
@@ -21,7 +22,33 @@ const oracleKp = loadKeypair('.keys/oracle.json');
 const policyAddr = policyPda(programId, agentKp.publicKey);
 const oracleAddr = oraclePda(programId, oracleKp.publicKey);
 
+// /api/agents?owner=<wallet>: every agent registered by that wallet, with on-chain activity.
+// Cached for a few seconds so a busy page does not hammer the public RPC.
+const AGENTS_TTL_MS = 15_000;
+const agentsCache = new Map<string, { at: number; view: Promise<OwnerView> }>();
+function agentsOf(owner: string): Promise<OwnerView> {
+  const hit = agentsCache.get(owner);
+  if (hit && Date.now() - hit.at < AGENTS_TTL_MS) return hit.view;
+  if (agentsCache.size > 200) agentsCache.clear();
+  const view = listOwnerAgents(conn as unknown as ChainReader, programId, new PublicKey(owner), Math.floor(Date.now() / 1000));
+  agentsCache.set(owner, { at: Date.now(), view });
+  view.catch(() => agentsCache.delete(owner)); // do not cache failures
+  return view;
+}
+
+// The owner signs pause/resume in the browser with their own wallet; the server only hands out a recent blockhash
+// (so the browser never needs the private RPC key).
+let bhCache: { at: number; v: { blockhash: string; lastValidBlockHeight: number } } | null = null;
+async function blockhash() {
+  if (bhCache && Date.now() - bhCache.at < 10_000) return bhCache.v;
+  const v = await conn.getLatestBlockhash('confirmed');
+  bhCache = { at: Date.now(), v };
+  return v;
+}
+
 const server = createDashboardServer({
+  listAgents: agentsOf,
+  getBlockhash: blockhash,
   html: () => fs.readFileSync('dashboard/index.html', 'utf8'),
 
   getState: async () => {
@@ -40,7 +67,7 @@ const server = createDashboardServer({
         policy: policyAddr.toBase58(),
       },
     });
-    return { ...state, readOnly: READ_ONLY };
+    return { ...state, readOnly: READ_ONLY, owner: decodePolicy(pInfo.data).owner };
   },
 
   setPaused: async (paused) => {
