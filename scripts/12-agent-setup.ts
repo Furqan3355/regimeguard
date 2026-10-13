@@ -51,7 +51,7 @@ if (existing.exists) {
       delegatee: address(guardPda(programId).toBase58()),
       nonce,
       amount: T(500),
-      expiryTs: BigInt(Math.floor(Date.now() / 1000) + 3 * 24 * 3600),
+      expiryTs: BigInt(Math.floor(Date.now() / 1000) + 30 * 24 * 3600),
     })
     .sendTransaction();
   console.log('Allowance created (500 tokens, 3 days):', accounts.delegationPda.toBase58());

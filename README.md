@@ -8,7 +8,7 @@ Built for the Colosseum Crypto World's Fair hackathon (Solana track). Runs on **
 
 | | |
 |---|---|
-| Live demo | `<add link>` |
+| Live demo | `http://20.198.95.100` |
 | Demo video | `<add link>` |
 | Guard program (devnet) | `GwmpezJpVo6nQUZV9wFNS4c4ctV8zVwojD1Lo6XFzZUP` |
 | Oracle account (devnet) | `HKdABVQSezisE8SrQXWFsofH7nCJFGjFcGxRoCyFzrRx` |
